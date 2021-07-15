@@ -20,6 +20,13 @@ __all__ = (
     "for_each_present_cpu",
 )
 
+def _for_each_set_bit(bitmap: Object, size: int) -> Iterator[int]:
+    word_bits = 8 * sizeof(bitmap.type_.type)
+    for i in range((size + word_bits - 1) // word_bits):
+        word = bitmap[i].value_()
+        for j in range(min(word_bits, size - word_bits * i)):
+            if word & (1 << j):
+                yield (word_bits * i) + j
 
 def for_each_cpu(mask: Object) -> Iterator[int]:
     """
@@ -31,13 +38,7 @@ def for_each_cpu(mask: Object) -> Iterator[int]:
         nr_cpu_ids = mask.prog_["nr_cpu_ids"].value_()
     except KeyError:
         nr_cpu_ids = 1
-    bits = mask.bits
-    word_bits = 8 * sizeof(bits.type_.type)
-    for i in range((nr_cpu_ids + word_bits - 1) // word_bits):
-        word = bits[i].value_()
-        for j in range(min(word_bits, nr_cpu_ids - word_bits * i)):
-            if word & (1 << j):
-                yield (word_bits * i) + j
+    return _for_each_set_bit(mask.bits, nr_cpu_ids)
 
 
 def _for_each_cpu_mask(prog: Program, name: str) -> Iterator[int]:
